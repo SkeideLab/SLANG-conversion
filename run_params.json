@@ -1,0 +1,16 @@
+{
+  "datashare_dir": "/slang/data/transfer",
+  "t1w_heuristic": {
+    "series_description": "3D Ax T1 MPRAGE_0.7X0.7X0.7"
+  },
+  "func_heuristic": {
+    "language": {
+      "series_description": "Ax fMRI  2.4 mm"
+    }
+  },
+  "fmap_heuristic": {},
+  "latest_run_only": true,
+  "fd_thres": 2.4,
+  "fd_perc": 10,
+  "events_file_pattern": "*blocked_events*"
+}

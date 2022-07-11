@@ -1,0 +1,53 @@
+{
+  "datashare_dir": "/EMPRISE_MRI",
+  "t1w_heuristic": {
+    "series_description": [
+      "t1_mprage_ADNI_20Ch_1.2",
+      "t1_mprage_ADNI_20Ch_1.2_ND"
+    ]
+  },
+  "func_heuristic": {
+    "EMPRISE": {
+      "series_description": [
+        "cmrr_mbep2d_bold_2iso_mod270122",
+        "cmrr_mbep2d_bold_2iso",
+        "cmrr_mbep2d_bold_2.2iso_mod270122",
+        "cmrr_mbep2d_bold_2.5iso",
+        "cmrr_mbep2d_bold_2.8iso_pf78",
+        "cmrr_mbep2d_bold_2.5iso_20ch",
+        "cmrr_mbep2d_bold_2.5iso_20ch_pf78_TE26",
+        "cmrr_mbep2d_bold_2.5iso_20ch_pf68_TE22",
+        "cmrr_mbep2d_bold_2.5iso_20ch_1_pf68_TE22_",
+        "cmrr_mbep2d_bold_2.5iso_20ch_2_pf68_TE22",
+        "cmrr_mbep2d_bold_2.5iso_20ch_3_pf68_TE22",
+        "cmrr_mbep2d_bold_2.5iso_20ch_4_pf68_TE22",
+        "cmrr_mbep2d_bold_2.5iso_20ch_5_pf68_TE22",
+        "cmrr_mbep2d_bold_2.5iso_20ch_6_pf68_TE22"
+      ]
+    },
+    "localizervisual": {
+      "series_description": [
+        "cmrr_mbep2d_bold_2.2iso_mod270122_loc_visual",
+        "cmrr_mbep2d_bold_2.5iso_20ch_pf68_TE22_LOC_VISUAL"
+      ]
+    },
+    "localizerwords": {
+      "series_description": [
+        "cmrr_mbep2d_bold_2.2iso_mod270122_loc_word",
+        "cmrr_mbep2d_bold_2.5iso_20ch_pf68_TE22_LOC_WORDS"
+      ]
+    }
+  },
+  "fmap_heuristic": {
+    "norm": {
+      "series_description": "cmrr_mbep2d_se_2.5iso_norm"
+    },
+    "invpol": {
+      "series_description": "cmrr_mbep2d_se_2.5iso_invpol"
+    }
+  },
+  "latest_run_only": false,
+  "fd_thres": 2.4,
+  "fd_perc": 100,
+  "events_file_pattern": "*blocked_events*"
+}
