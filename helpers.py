@@ -7,6 +7,17 @@ from datalad.api import Dataset
 from simple_slurm import Slurm
 
 
+def create_sub_ds(parent_ds, sub_ds_name):
+
+    # Create sub-dataset if it doesn't exist
+    sub_ds_dir = Path(parent_ds.path) / sub_ds_name
+    sub_ds = Dataset(sub_ds_dir)
+    if not sub_ds.is_installed():
+        parent_ds.create(sub_ds_name, cfg_proc='text2git')
+
+    return sub_ds
+
+
 def download_datashare(datashare_dir, bids_ds):
     """Downloads new zip files with raw data from MPCDF DataShare.
 
@@ -31,10 +42,8 @@ def download_datashare(datashare_dir, bids_ds):
     """
 
     # Create subdataset if it doesn't exist
-    source_dir = Path(bids_ds.path) / 'sourcedata'
-    source_ds = Dataset(source_dir)
-    if not source_ds.is_installed():
-        bids_ds.create('sourcedata', cfg_proc='text2git')
+    source_ds = create_sub_ds(bids_ds, 'sourcedata')
+    source_dir = Path(source_ds.path)
 
     # Get DataShare login credentials
     datashare_user = getpass.getuser()
@@ -68,7 +77,8 @@ def download_datashare(datashare_dir, bids_ds):
         for file in files:
 
             # Explicity exclude certain file names
-            if file.name.startswith('_'):
+            # if file.name.startswith('_'):
+            if not 'SA27' in file.name:
                 continue
 
             # Download if it doesn't exist

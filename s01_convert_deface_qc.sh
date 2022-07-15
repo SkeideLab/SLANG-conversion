@@ -8,10 +8,11 @@ bids_dir=$1
 container_reproin=$2
 container_bidsonym=$3
 container_mriqc=$4
-remote=$5
-participant=$6
-session=$7
-fd_thres=$8
+bids_remote=$5
+deriv_remote=$6
+participant=$7
+session=$8
+fd_thres=$9
 
 # Enable use of Singularity containers
 module load singularity
@@ -30,8 +31,10 @@ cd "$job_dir"
 # Announce the clone to be temporary
 git submodule foreach --recursive git annex dead here
 
-# Checkout a unique branch
+# Checkout unique branches in both datasets
 git checkout -b "job-$SLURM_JOB_ID"
+datalad get --no-data derivatives
+git -C derivatives checkout -b "job-$SLURM_JOB_ID"
 
 # Make sure that BIDS metadata from previous sessions is available
 datalad --on-failure ignore get --dataset . \
@@ -104,7 +107,7 @@ $job_dir participant \
 --skip_bids_validation"
 
 # Create output directory for quality control
-qc_dir="code/qc/"
+qc_dir="derivatives/mriqc/"
 mkdir -p "$qc_dir"
 
 # Participant level quality control
@@ -128,11 +131,14 @@ $job_dir $qc_dir participant \
 # Push large files to the RIA stores
 # Does not need a lock, no interaction with Git
 datalad push --dataset . --to output-storage
+datalad push --dataset derivatives --to output-storage
 
 # Push to output branches
 # Needs a lock to prevent concurrency issues
-git remote add outputstore "$remote"
+git remote add outputstore "$bids_remote"
+git -C derivatives remote add outputstore "$deriv_remote"
 flock --verbose "$lockfile" git push outputstore
+flock --verbose "$lockfile" git -C derivatives push outputstore
 
 # Clean up everything
 chmod -R +wrx "$job_dir"
