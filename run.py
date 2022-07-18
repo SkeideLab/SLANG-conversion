@@ -53,7 +53,6 @@ participants_sessions = download_datashare(
 # This happens in parallel for all participant/session pairs
 script = f'{bids_dir}/code/s01_convert_deface_qc.sh'
 fd_thres = run_params['fd_thres']
-job_name = 's01_convert_deface_qc'
 job_ids = []
 for participant, session in participants_sessions:
     args = [script, bids_dir, bids_remote, deriv_remote,
@@ -66,33 +65,29 @@ for participant, session in participants_sessions:
 
 # Merge branches back into the dataset once they've finished
 script = f'{bids_dir}/code/s02_merge.sh'
-job_name = 's02_merge'
 args = [script, bids_dir, *job_ids]
 job_id = submit_job(args, dependency_jobs=job_ids, dependency_type='afterany',
-                    job_name=job_name, log_dir=log_dir)
+                    job_name='s02_merge', log_dir=log_dir)
 
 # Group level quality control
 script = f'{bids_dir}/code/s03_qc_group.sh'
 fd_thres = run_params['fd_thres']
-job_name = 's03_qc_group'
 args = [script, bids_dir, fd_thres]
 job_id = submit_job(args, dependency_jobs=job_id, dependency_type='afterok',
-                    job_name=job_name, log_dir=log_dir)
+                    job_name='s03_qc_group', log_dir=log_dir)
 
 # Discard high-movement scans
 script = f'{bids_dir}/code/s04_exclude.py'
 fd_perc = run_params['fd_perc']
-job_name = 's04_exclude'
 args = [executable, script, '-d', bids_dir, '-p', fd_perc]
 job_id = submit_job(args, dependency_jobs=job_id, dependency_type='afterok',
-                    job_name=job_name, log_dir=log_dir)
+                    job_name='s04_exclude', log_dir=log_dir)
 
 # Copy `events.tsv` files created by PsychoPy into the BIDS structure
 if run_params['events_file_pattern'] is not None:
     script = f'{bids_dir}/code/s05_copy_events.py'
-    job_name = 's05_copy_events'
-    events_file_pattern = f"\"{run_params['events_file_pattern']}\""
+    events_file_pattern = "'" + run_params['events_file_pattern'] + "'"
     args = [executable, script, '-d', bids_dir, '-p', events_file_pattern]
     job_id = submit_job(
         args, dependency_jobs=job_id, dependency_type='afterok',
-        job_name=job_name, log_dir=log_dir)
+        job_name='s05_copy_events', log_dir=log_dir)
