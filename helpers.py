@@ -77,8 +77,7 @@ def download_datashare(datashare_dir, bids_ds):
         for file in files:
 
             # Explicity exclude certain file names
-            # if file.name.startswith('_'):
-            if not 'SA27' in file.name:
+            if file.name.startswith('_'):
                 continue
 
             # Download if it doesn't exist

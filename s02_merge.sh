@@ -29,11 +29,23 @@ done
 
 # Merge and delete successful branches
 if [ -n "$local_branches" ]; then
+
+    # Merge branches into the BIDS dataset
     datalad update --sibling output
     git merge -m "Merge batch job results" $local_branches
     git annex fsck --fast -f output-storage
     datalad get -d . -s output -s output-storage
     git push --delete output $remote_branches
+
+    # Merge branches into the derivatives sub-dataset
+    cd derivatives
+    datalad update --sibling output
+    git merge -m "Merge batch job results" $local_branches
+    git annex fsck --fast -f output-storage
+    datalad get -d . -s output -s output-storage
+    git push --delete output $remote_branches
+    datalad save -d . -m "Add QC reports to derivatives" derivatives/mriqc
+
 fi
 
 # Warn about unsucessful branches

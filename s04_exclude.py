@@ -25,7 +25,7 @@ def main():
     fd_perc = float(args.fd_perc)
 
     # Read group level QC report
-    qc_file = bids_dir / 'code/qc/group_bold.tsv'
+    qc_file = bids_dir / 'derivatives/mriqc/group_bold.tsv'
     qc = pd.read_csv(qc_file, delimiter='\t')
 
     # Get problematic participants and sessions

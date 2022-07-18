@@ -5,8 +5,7 @@ set -e -u -x
 
 # Parse arguments from the job scheduler as variables
 bids_dir=$1
-container=$2
-fd_thres=$3
+fd_thres=$2
 
 # Enable use of Singularity containers
 module load singularity
@@ -15,13 +14,14 @@ module load singularity
 cd "$bids_dir"
 
 # Participant level quality control
+mriqc_dir="derivatives/mriqc"
 datalad containers-run \
-  --container-name "$container" \
+  --container-name "code/containers/bids-mriqc" \
   --input . \
-  --output code/qc/ \
+  --output "$mriqc_dir" \
   --message "Create group level quality reports" \
   --explicit "\
-$bids_dir {outputs} group \
+$bids_dir $mriqc_dir group \
 --nprocs $SLURM_CPUS_PER_TASK \
 --mem $((SLURM_MEM_PER_NODE / 1024)) \
 --float32 \
