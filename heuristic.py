@@ -169,6 +169,12 @@ def infotodict(seqinfo):
                 else:
                     run_index = item
 
+               # in case of phase functional images eg. from 7t
+                # normal images have 'M' for magnitude
+                phase = ''
+                if 'P' in s.image_type:
+                    phase = '_part-phase'
+
                 # Check if current scan meets all conditions in the task
                 # heuristic
                 if all([getattr(s, sequence_attribute) == matching_value
@@ -183,7 +189,7 @@ def infotodict(seqinfo):
                             acq = "_acq-short"
 
                     func = create_key(  # Create BIDS file name and extension
-                        f"{{bids_subject_session_dir}}/func/{{bids_subject_session_prefix}}_task-{task}{acq}_run-{run_index}_bold")
+                        f"{{bids_subject_session_dir}}/func/{{bids_subject_session_prefix}}_task-{task}{acq}_run-{run_index}{phase}_bold")
                     info.setdefault(func, []).append({'item': s.series_id})
 
         # Detect fmap scans separately for each direction
