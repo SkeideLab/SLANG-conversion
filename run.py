@@ -21,7 +21,8 @@ deriv_ds = create_sub_ds(bids_ds, 'derivatives')
 ria_dir = bids_dir / '.outputstore'
 if not ria_dir.exists():
     ria_url = f'ria+file://{ria_dir}'
-    bids_ds.create_sibling_ria(ria_url, name='output', alias='bids')
+    bids_ds.create_sibling_ria(
+        ria_url, name='output', alias='bids', new_store_ok=True)
     deriv_ds.create_sibling_ria(
         ria_url, name='output', alias='derivatives', new_store_ok=True)
     bids_ds.push(to='output')
