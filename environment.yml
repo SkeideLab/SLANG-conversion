@@ -18,7 +18,7 @@ dependencies:
   - colorama=0.4.4
   - cryptography=35.0.0
   - curl=7.78.0
-  - datalad=0.15.3
+  - datalad=0.16.0
   - dbus=1.13.6
   - deprecated=1.2.13
   - distro=1.6.0
