@@ -21,7 +21,7 @@ def prepare_options():
 
         # Check for the heuristic parameters
         found_one = False
-        for param in ['t1w_heuristic', 'func_heuristic', 'fmap_heuristic']:
+        for param in ['t1w_heuristic', 'func_heuristic', 'fmap_heuristic', 'mp2rage_heuristic']:
             if param not in run_params:
                 warnings.warn(
                     f"Parameter '{param}' not found in `run_params.json`."
@@ -201,6 +201,59 @@ def infotodict(seqinfo):
                 fmap = create_key(  # Create BIDS file name and extension
                     f"{{bids_subject_session_dir}}/fmap/{{bids_subject_session_prefix}}_dir-{direction}_run-{item}_epi")
                 info.setdefault(fmap, []).append({'item': s.series_id})
+
+        # -------- mp2rage SCANS --------------------------------------------------
+        # Detect mp2rage scans
+        if 'mp2rage_heuristic' in run_params:
+            heuristic = run_params['mp2rage_heuristic']
+            # Make a list with possible heuristics for this task
+            heuristics_list = []
+            if 'series_description' in heuristic:
+                # If we have multiple series descriptions
+                if isinstance(heuristic['series_description'], list):
+                    # We want to have a BIDS acquisition descriptor to distinguish
+                    # the sequences for same task
+                    # For each series description in list, make small heuristic
+                    # dict with series description as single string, unchanged
+                    # otherwise
+                    h = heuristic.copy()
+                    for s_description in heuristic['series_description']:
+                        h['series_description'] = s_description
+                        # Save this new heuristic dict decomposed as list without
+                        # relation to dict
+                        heuristics_list.append(list(h.items()))
+                else:
+                    # If there is only 1 series_description, then just decompose
+                    # the one heuristic
+                    heuristics_list.append(list(heuristic.items()))
+
+            if 'T1 MAP' in s.image_type:
+                suffix = 'T1map'
+                path = 'derivatives/scanner/'
+                # cannot be converted right now because 'derivatives' folder is discarded during conversion and merging
+                # (before bidsonym step)
+                continue
+            elif 'UNI' in s.image_type:
+                suffix = 'UNIT1'
+            else:
+
+                if 'INV2' in s.series_description:
+                    inv = '2'
+                elif 'INV1' in s.series_description:
+                    inv = '1'
+                else:
+                    inv = ''
+                suffix = f"inv-{inv}_MP2RAGE"
+
+            # Each item in this list is a heuristic with only 1 series description
+            # The heuristic is a decomposed dict (items() list)
+            for sub_heuristic in heuristics_list:
+                # Check if current scan meets all conditions in the T1w heuristic
+                if all([getattr(s, sequence_attribute) == matching_value
+                        for sequence_attribute, matching_value in sub_heuristic]):
+                    t1w = create_key(  # Create BIDS file name and extension
+                        f"{{bids_subject_session_dir}}/anat/{{bids_subject_session_prefix}}_run-{item}_{suffix}")
+                    info.setdefault(t1w, []).append({'item': s.series_id})
 
     return info
 
