@@ -20,7 +20,11 @@
       ]
     }
   },
-  "fmap_heuristic": {},
+  "fmap_heuristic": {
+    "invpol": {
+      "series_description": "fMRI_top-up_1p75_TE24_TR2100_iPAT3_FS"
+    }
+  },
   "latest_run_only": false,
   "fd_thres": 2.4,
   "fd_perc": 100,
