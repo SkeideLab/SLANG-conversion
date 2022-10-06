@@ -4,6 +4,12 @@ import warnings
 import re
 
 
+POPULATE_INTENDED_FOR_OPTS = {
+    'matching_parameters': ['ImagingVolume', 'Shims'],
+    'criterion': 'Closest'
+}
+
+
 def prepare_options():
     """Reads in the file `<my_study>/code/run_params.json` and checks for
     the presence of relevant parameters to run the heudiconv heuristic.
