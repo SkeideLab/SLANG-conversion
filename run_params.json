@@ -1,32 +1,16 @@
 {
-  "datashare_dir": "/EMPRISE_HARVEY_pilot",
+  "datashare_dir": "/slang/data/transfer",
   "t1w_heuristic": {
-    "series_description": [
-      "mp2rage_0p7_p2_phPF68_FA5-3_TI900-2750_BW250_INV2",
-      "mp2rage_0p7_p2_phPF68_FA5-3_TI900-2750_BW250_INV1",
-      "mp2rage_0p7_p2_phPF68_FA5-3_TI900-2750_BW250_T1_Images",
-      "mp2rage_0p7_p2_phPF68_FA5-3_TI900-2750_BW250_UNI_Images"
-    ]
+    "series_description": "3D Ax T1 MPRAGE_0.7X0.7X0.7"
   },
   "func_heuristic": {
-    "EMPRISEharvey": {
-      "series_description": [
-        "fMRI_1p75_TE24_TR2100_iPAT3_FS"
-      ]
-    },
-    "taskfree": {
-      "series_description": [
-        "1p5_TE24_TR2100_iPAT3"
-      ]
+    "language": {
+      "series_description": "Ax fMRI  2.4 mm"
     }
   },
-  "fmap_heuristic": {
-    "invpol": {
-      "series_description": "fMRI_top-up_1p75_TE24_TR2100_iPAT3_FS"
-    }
-  },
-  "latest_run_only": false,
+  "fmap_heuristic": {},
+  "latest_run_only": true,
   "fd_thres": 2.4,
-  "fd_perc": 100,
+  "fd_perc": 10,
   "events_file_pattern": "*blocked_events*"
 }
