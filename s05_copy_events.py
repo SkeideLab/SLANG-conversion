@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from fnmatch import fnmatch
 from pathlib import Path
 from zipfile import ZipFile
+import ast
 
 from bids import BIDSLayout
 from datalad.api import Dataset
@@ -59,12 +60,13 @@ class Unpacker:
         sessions = self.layout.get(target='session', return_type='id')
 
         extracted_files = []
-
+        # FIXME change this to only go through subject session tuples that exist
         for session in sessions:
             for participant in subjects:
+                found = False
                 # pattern include optional zero for run
                 pattern_leadingzero = f"*sub-{participant}_ses-{session}_*sv".casefold()
-                pattern_nozero = f"*sub-{participant}_ses-{int(session)}_*sv".casefold(
+                pattern_nozero = f"*sub-{participant}_ses-{session.lstrip('0')}_*sv".casefold(
                 )
                 zip_files = self.bids_dir.glob(
                     f'sourcedata/{session}/{participant}_*.zip')
@@ -79,6 +81,7 @@ class Unpacker:
                                 pattern_leadingzero) or fnmatch(
                                 zipinfo.filename.casefold(),
                                 pattern_nozero):
+                            found = True
                             orig_filename = zipinfo.filename
                             zipinfo.filename = os.path.basename(
                                 zipinfo.filename)
@@ -91,6 +94,9 @@ class Unpacker:
                                     f'to `{save_source_dir}`', flush=True)
                                 zip_archive.extract(zipinfo, save_source_dir)
                                 extracted_files.append(full_newname)
+                if not found:
+                    print(
+                        f"Error: No log files found for subject {participant} and session {session}, investigation needed", flush=True)
         return extracted_files
 
     def construct_lookups(self):
@@ -115,7 +121,13 @@ class Unpacker:
         for l_file in log_files:
             ses = str(l_file).split('/')[-1].split('_')[1].split('-')[1]
             sub = str(l_file).split(
-                '/')[-1].split('_')[0].split('-')[1].upper()
+                '/')[-1].split('_')[0].split('-')[1]
+
+            # make sure sub is in the correct case as determined by already written bids scan skeleton
+            for sub_events in self.lookup_events[ses]:
+                if sub_events.casefold() == sub.casefold():
+                    sub = sub_events
+
             task = self.get_taskname(l_file)
             run = self.get_runindex(l_file)
 
@@ -267,7 +279,7 @@ class Unpacker:
             e_file = self.flatten(self.lookup_events[session][subject][task])
             try:
                 l_file = self.flatten(
-                    self.lookup_logs[str(int(session))][subject][task])
+                    self.lookup_logs[session.lstrip('0')][subject][task])
             except KeyError as err:
                 print(err)
                 print(
@@ -275,10 +287,14 @@ class Unpacker:
                 print('Skipping this run...')
                 l_file = ['no file found']
         else:
-            if not run in self.lookup_logs[str(int(session))][subject][task]:
-                raise LogScanAssignmentError()
-            e_file = self.lookup_events[session][subject][task][run]
-            l_file = self.lookup_logs[str(int(session))][subject][task][run]
+            try:
+                if not run in self.lookup_logs[str(int(session))][subject][task]:
+                    raise LogScanAssignmentError()
+                e_file = self.lookup_events[session][subject][task][run]
+                l_file = self.lookup_logs[session.lstrip(
+                    '0')][subject][task][run]
+            except KeyError:
+                raise ManualChangesNeededError()
 
         if len(e_file) > 1 or len(l_file) > 1:
             scan_log = self.resolve_times(
@@ -452,7 +468,31 @@ class Unpacker:
         tmp = f"{'_'.join(tmp.split('_')[:-1])}_events.tsv"
         return tmp
 
+    def extract_priming_onsets(self, log_filename, delim):
+
+        onsets = pd.read_csv(log_filename, sep=delim, converters={
+                             'target.started': make_list, 'target.stopped': make_list})
+
+        # only deal with stim trials
+        mask = onsets['mod_prime'] != 'pause'
+        # multiple stimuli start times per trial in list
+        onset = onsets.loc[mask, 'target.started'].apply(np.min)
+        duration = onsets.loc[mask, 'target.stopped'].apply(
+            np.min) - onsets.loc[mask, 'target.started'].apply(np.min)
+
+        # prime trials where numerosity of prime and target is identical
+        mask_prime = onsets.loc[mask,
+                                'num_prime'] == onsets.loc[mask, 'num_target']
+        events = pd.DataFrame(
+            {'onset': onset, 'duration': duration, 'trial_type': 'nonprime'})
+        events.loc[mask_prime, 'trial_type'] = 'prime'
+        events['modality'] = onsets.loc[mask, 'mod_prime'] + \
+            '_' + onsets.loc[mask, 'mod_target']
+
+        return events
+
     # transform content
+
     def transform_log_content(self, events_filename, log_filename):
         """transform log content to be bids conform
 
@@ -478,32 +518,36 @@ class Unpacker:
         onsets = pd.read_csv(log_filename, sep=delim)
 
         # process columns
-        events_list = []
-        if 'onset' in onsets:
-            events_list.append(onsets['onset'])
-        else:
-            events_list.append(onsets['t_start'].round(decimals=2))
 
-        if 't_stop' in onsets and 't_start' in onsets:
-            events_list.append(
-                (onsets['t_stop']-onsets['t_start']).round(decimals=2))
+        if 'priming' in self.layout.get_tasks():
+            events = self.extract_priming_onsets(log_filename, delim)
         else:
-            events_list.append(onsets['duration'])
+            events_list = []
+            if 'onset' in onsets:
+                events_list.append(onsets['onset'])
+            else:
+                events_list.append(onsets['t_start'].round(decimals=2))
 
-        if 'trial_type' in onsets:
-            events_list.append(onsets['trial_type'])
-        else:
-            if 'num' in onsets:
+            if 't_stop' in onsets and 't_start' in onsets:
                 events_list.append(
-                    onsets['num'].astype(str) + '_' +
-                    onsets['mod'].str.replace(' |\'', '', regex=True))
-            elif 'condition' in onsets and 'truth' in onsets:
-                events_list.append(onsets['condition']+'_'+onsets['truth'])
+                    (onsets['t_stop']-onsets['t_start']).round(decimals=2))
+            else:
+                events_list.append(onsets['duration'])
 
-        events = pd.concat(events_list, axis=1, keys=[
-            'onset', 'duration', 'trial_type'])
-        # remove pause information
-        events = events[~events['trial_type'].str.contains('pause')]
+            if 'trial_type' in onsets:
+                events_list.append(onsets['trial_type'])
+            else:
+                if 'num' in onsets:
+                    events_list.append(
+                        onsets['num'].astype(str) + '_' +
+                        onsets['mod'].str.replace(' |\'', '', regex=True))
+                elif 'condition' in onsets and 'truth' in onsets:
+                    events_list.append(onsets['condition']+'_'+onsets['truth'])
+
+            events = pd.concat(events_list, axis=1, keys=[
+                'onset', 'duration', 'trial_type'])
+            # remove pause information
+            events = events[~events['trial_type'].str.contains('pause')]
 
         self.bids_ds.unlock(os.path.dirname(events_filename))
         # save
@@ -542,6 +586,12 @@ class Unpacker:
 
         return file_list
 
+    def has_multirun_design(self):
+        for task in self.layout.get_tasks():
+            if 'harvey' in task or 'EMPRISE' in task or 'priming' in task:
+                return True
+        return False
+
     def add_to_lookup(self, category, ses, sub, task, run, c_file):
         """Adds files to the lookup dictionaries at the correct place
 
@@ -575,6 +625,13 @@ class Unpacker:
             c_dict[ses][sub][task][run] = []
 
         c_dict[ses][sub][task][run].append(c_file)
+
+
+def make_list(input):
+    if '[' in input:
+        return ast.literal_eval(input)
+    else:
+        return input
 
 
 def parse_args():
@@ -613,7 +670,7 @@ def main():
     # Search for correspdonding events files created by PsychoPy in the zips
     extracted_files = []
     # HACK for emprise, to integrate with other part
-    if 'EMPRISE' in unpacker.layout.get_tasks():
+    if unpacker.has_multirun_design():
         extracted_files = unpacker.extract_logs_from_zip()
         unpacker.write_mapping()
         unpacker.extract_onsets()
