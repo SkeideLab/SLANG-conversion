@@ -56,57 +56,56 @@ class Unpacker:
             list of filenames of extracted events files
         """
 
-        subjects = self.layout.get(target='subject', return_type='id')
-        sessions = self.layout.get(target='session', return_type='id')
+        participants_sessions = self.get_participants_sessions()
 
         extracted_files = []
-        # FIXME change this to only go through subject session tuples that exist
-        for session in sessions:
-            for participant in subjects:
-                found = False
-                # pattern include optional zero for run
-                pattern_leadingzero = f"*sub-{participant}_ses-{session}_*sv".casefold()
-                pattern_nozero = f"*sub-{participant}_ses-{session.lstrip('0')}_*sv".casefold(
-                )
-                zip_files = self.bids_dir.glob(
-                    f'sourcedata/{session}/{participant}_*.zip')
-                save_source_dir = self.bids_dir/'sourcedata'/session/'logs'/participant
-                save_source_dir.mkdir(parents=True, exist_ok=True)
-                for zip_file in zip_files:
-                    zip_archive = ZipFile(zip_file)
-                    zip_contents = zip_archive.infolist()
-                    for zipinfo in zip_contents:
-                        if fnmatch(
-                                zipinfo.filename.casefold(),
-                                pattern_leadingzero) or fnmatch(
-                                zipinfo.filename.casefold(),
-                                pattern_nozero):
-                            found = True
-                            orig_filename = zipinfo.filename
-                            zipinfo.filename = os.path.basename(
-                                zipinfo.filename)
-                            full_newname = str(
-                                save_source_dir/zipinfo.filename)
-                            if not os.path.exists(full_newname):
-                                self.bids_ds.unlock(save_source_dir)
-                                print(
-                                    f'\nCopying `{orig_filename}` from `{zip_file}` '
-                                    f'to `{save_source_dir}`', flush=True)
-                                zip_archive.extract(zipinfo, save_source_dir)
-                                extracted_files.append(full_newname)
-                if not found:
-                    print(
-                        f"Error: No log files found for subject {participant} and session {session}, investigation needed", flush=True)
+        for participant, session in participants_sessions:
+            found = False
+            # pattern include optional zero for run
+            pattern_leadingzero = f"*sub-{participant}_ses-{session}_*sv".casefold()
+            pattern_nozero = f"*sub-{participant}_ses-{session.lstrip('0')}_*sv".casefold(
+            )
+            zip_files = self.bids_dir.glob(
+                f'sourcedata/{session}/{participant}_*.zip')
+            save_source_dir = self.bids_dir/'sourcedata'/session/'logs'/participant
+            save_source_dir.mkdir(parents=True, exist_ok=True)
+            for zip_file in zip_files:
+                zip_archive = ZipFile(zip_file)
+                zip_contents = zip_archive.infolist()
+                for zipinfo in zip_contents:
+                    if fnmatch(
+                            zipinfo.filename.casefold(),
+                            pattern_leadingzero) or fnmatch(
+                            zipinfo.filename.casefold(),
+                            pattern_nozero):
+                        found = True
+                        orig_filename = zipinfo.filename
+                        zipinfo.filename = os.path.basename(
+                            zipinfo.filename)
+                        full_newname = str(
+                            save_source_dir/zipinfo.filename)
+                        if not os.path.exists(full_newname):
+                            self.bids_ds.unlock(save_source_dir)
+                            print(
+                                f'\nCopying `{orig_filename}` from `{zip_file}` '
+                                f'to `{save_source_dir}`', flush=True)
+                            zip_archive.extract(zipinfo, save_source_dir)
+                            extracted_files.append(full_newname)
+            if not found:
+                print(
+                    f"Error: No log files found for subject {participant} and session {session}, investigation needed", flush=True)
         return extracted_files
 
     def construct_lookups(self):
         """Constructs lookup dictionaries of available events and log files. Dictionaries of the form dict[session][subject][task][run]=[list of filenames]
         Populates the instance attributes lookup_events and lookup_logs. Runs are 0 if no explicit run numbering has been shown (explicit numbering is marked via acq-*dup*)
         """
+        tasks_scans = set()
         for e_file in self.events_files:
             ses = e_file.get_entities()['session']
             sub = e_file.get_entities()['subject']
             task = e_file.get_entities()['task']
+            tasks_scans.add(task)
             # if no dup, then numbering was produced by conversion and is not reliable
             if 'acquisition' in e_file.get_entities() and 'dup' in e_file.get_entities()['acquisition']:
                 run = e_file.get_entities()['run']
@@ -129,6 +128,15 @@ class Unpacker:
                     sub = sub_events
 
             task = self.get_taskname(l_file)
+            # check if task contains supertask name
+            # eg if audioharvey contains harvey
+            match = [taskname_scan
+                     for taskname_scan
+                     in tasks_scans
+                     if taskname_scan in task]
+            if len(match) > 0:
+                # taskname should be the same as the scan match taskname
+                task = match[0]
             run = self.get_runindex(l_file)
 
             self.add_to_lookup('log', ses, sub, task, run, l_file)
@@ -305,6 +313,12 @@ class Unpacker:
         for (s_file, l_file) in scan_log:
             self.add_log(s_file, l_file)
 
+    def stringify_runs(self, runs):
+        r = [f"{row['filename']}....{row['acq_time']}"
+             for index, row
+             in runs.iterrows()]
+        return r
+
     def resolve_times(self, subject, session, task, run, e_files, l_files):
         """Connect events and log files without looking at not-reliable run-numbers or within a run, based on timing.
 
@@ -335,58 +349,59 @@ class Unpacker:
         LogScanAssignmentError
             run numbers will be ignored next time
         """
+        # PREPARE TIMES
+        # treat days individually
+        s_files = [self.get_scanname(e_file) for e_file in e_files]
+        runs = self.mapping.loc[self.mapping['filename'].isin(s_files)]
+        runs = runs.sort_values('acq_time')
+        runs['acq_day'] = self.get_day(runs['acq_time'])
+        runs.reset_index(drop=True, inplace=True)
+
+        # get creation time out of logs
+        log_times = [self.get_logtime(csv_log) for csv_log in l_files]
+        # sort logs and acquisitions by time so that the ranks of each correspond
+        logs = pd.DataFrame({'filename': l_files, 'acq_time': log_times})
+        logs.sort_values('acq_time', inplace=True)
+        logs.reset_index(drop=True, inplace=True)
+        logs['acq_day'] = self.get_day(logs['acq_time'])
+
         if not len(e_files) == len(l_files):
-            s = f"\tsubject: {subject} session: {session} task: {task} run: {run}\n"
-            s += f"\tscan files:\n"
-            for item in e_files:
-                s += f"\t {str(item)}\n"
-            s += f"\tlog files:\n"
-            for item in l_files:
-                s += f"\t {str(item)}\n"
-            #s += f"\tscan files: {[str(item) for item in e_files]}\n"
-            #s += f"\tlog files: {[str(item) for item in l_files]}\n"
-            s += '.'
+            s = self.prep_error_message(
+                subject, session, task, run, runs, logs)
             if run == 0:
                 raise ManualChangesNeededError(s)
             else:
                 raise LogScanAssignmentError(s)
 
-         # treat days individually
-        s_files = [self.get_scanname(e_file) for e_file in e_files]
-        runs = self.mapping.loc[self.mapping['filename'].isin(s_files)]
-        runs = runs.sort_values('acq_time')
-
-        log_times = []
-
-        # get creation time out of logs
-        for csv_log in l_files:
-            time = self.get_logtime(csv_log)
-            log_times.append(time)
-
-        # sort logs and acquisitions by time so that the ranks of each correspond
-        logs = pd.DataFrame({'csv_log': l_files, 'log_times': log_times})
-        logs.sort_values('log_times', inplace=True)
-        logs.reset_index(drop=True, inplace=True)
-        logs['acq_day'] = self.get_day(logs['log_times'])
-
-        runs['acq_day'] = self.get_day(runs['acq_time'])
-        runs.reset_index(drop=True, inplace=True)
         days_runs = np.unique(runs['acq_day'])
         assigned = []
         for day in days_runs:
             logs_day = logs[logs['acq_day'] == day]
             runs_day = runs[runs['acq_day'] == day]
+
             if runs_day.shape[0] != logs_day.shape[0]:
-                s = f"\tsubject: {subject} session: {session} task: {task} run: {run} day: {days_runs}\n"
-                s += f"\tscan files: {[str(item) for item in e_files]}\n"
-                s += f"\tlog files: {[str(item) for item in l_files]}\n"
-                s += '.'
+                s = self.prep_error_message(
+                    self, subject, session, task, run, runs, logs, days_runs=days_runs)
                 raise ManualChangesNeededError(s)
-            else:
-                assigned.extend([(run, str(log)) for run, log in zip(
-                    runs_day['filename'], logs_day['csv_log'])])
+
+            assigned.extend([(run, str(log)) for run, log in zip(
+                runs_day['filename'], logs_day['filename'])])
 
         return assigned
+
+    def prep_error_message(self, subject, session, task, run, runs, logs, days_runs=None):
+        if days_runs is None:
+            s = f"\tsubject: {subject}, session: {session}, task: {task}, run: {run}\n"
+        else:
+            s = f"\tsubject: {subject} session: {session} task: {task} run: {run} day: {days_runs}\n"
+        s += f"\tscan files:\n"
+        for item in self.stringify_runs(runs):
+            s += f"\t {item}\n"
+        s += f"\tlog files:\n"
+        for item in self.stringify_runs(logs):
+            s += f"\t {item}\n"
+        s += '.'
+        return s
 
     def get_day(self, time_series):
         return time_series.str.split('T').str[0]
@@ -446,7 +461,8 @@ class Unpacker:
                         filename_scan, map_filename)
                     self.transform_log_content(filename_events, filename_log)
             else:
-                print('no logs found for ', str(map_filename), flush=True)
+                print('no events files populated for',
+                      str(map_filename), flush=True)
 
     def get_events_filename(self, filename_scan, map_filename):
         """get filename of events file from scan filename
@@ -529,8 +545,12 @@ class Unpacker:
                 events_list.append(onsets['t_start'].round(decimals=2))
 
             if 't_stop' in onsets and 't_start' in onsets:
-                events_list.append(
-                    (onsets['t_stop']-onsets['t_start']).round(decimals=2))
+                duration = (onsets['t_stop'] -
+                            onsets['t_start']).round(decimals=2)
+                # fill missing values with expected duration
+                missing_values_mask = duration.isna()
+                duration[missing_values_mask] = onsets.loc[missing_values_mask, 'duration']
+                events_list.append(duration)
             else:
                 events_list.append(onsets['duration'])
 
@@ -626,6 +646,16 @@ class Unpacker:
 
         c_dict[ses][sub][task][run].append(c_file)
 
+    def get_participants_sessions(self):
+        subjects = self.layout.get(target='subject', return_type='id')
+        participants_sessions = set()
+        for sub in subjects:
+            sessions = self.layout.get(
+                target='session', return_type='id', subject=sub)
+            for ses in sessions:
+                participants_sessions.add((sub, ses))
+        return participants_sessions
+
 
 def make_list(input):
     if '[' in input:
@@ -661,12 +691,9 @@ def main():
     unpacker = Unpacker(BIDSLayout(bids_dir), bids_dir, bids_ds)
     unpacker.events_files = unpacker.layout.get(
         suffix='events', extension='tsv')
-    print(
-        f"subjects: {unpacker.layout.get(target='subject',return_type='id')}",
-        flush=True)
-    print(
-        f"sessions: {unpacker.layout.get(target='session',return_type='id')}",
-        flush=True)
+    print('Participants and sessions: ')
+    print(unpacker.get_participants_sessions())
+
     # Search for correspdonding events files created by PsychoPy in the zips
     extracted_files = []
     # HACK for emprise, to integrate with other part
