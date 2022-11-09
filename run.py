@@ -81,7 +81,8 @@ job_id = submit_job(args, dependency_jobs=job_id, dependency_type='afterok',
 # Discard high-movement scans
 script = f'{bids_dir}/code/s04_exclude.py'
 fd_perc = run_params['fd_perc']
-args = [executable, script, '-d', bids_dir, '-p', fd_perc]
+move_zip = run_params['move_zip'] if 'move_zip' in run_params else True
+args = [executable, script, '-d', bids_dir, '-p', fd_perc, '-z', move_zip]
 job_id = submit_job(args, dependency_jobs=job_id, dependency_type='afterok',
                     job_name='s04_exclude', log_dir=log_dir)
 
