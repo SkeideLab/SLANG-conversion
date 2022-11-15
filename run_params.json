@@ -1,5 +1,5 @@
 {
-  "datashare_dir": "/slang/data/transfer",
+  "datashare_dir": "/SLANG/data/transfer",
   "t1w_heuristic": {
     "series_description": "3D Ax T1 MPRAGE_0.7X0.7X0.7"
   },
