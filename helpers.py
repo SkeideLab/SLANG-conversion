@@ -13,7 +13,14 @@ def create_sub_ds(parent_ds, sub_ds_name):
     sub_ds_dir = Path(parent_ds.path) / sub_ds_name
     sub_ds = Dataset(sub_ds_dir)
     if not sub_ds.is_installed():
-        parent_ds.create(sub_ds_name, cfg_proc='text2git')
+        parent_ds.create(sub_ds_name)
+
+    # Make sure README and CHANGELOG get stored with git
+    sub_ds.repo.set_gitattributes(
+        [('README*', {'annex.largefiles': 'nothing'}),
+         ('CHANGES*', {'annex.largefiles': 'nothing'})])
+    parent_ds.save(sub_ds_name + '/.gitattributes',
+                   message='Exclude README/CHANGES from git-annex')
 
     return sub_ds
 
