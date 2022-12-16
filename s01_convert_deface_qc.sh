@@ -37,7 +37,7 @@ git -C derivatives checkout -b "job-$SLURM_JOB_ID"
 datalad --on-failure ignore get --dataset . \
   sub-*/ses-*/*.json \
   sub-*/ses-*/*/*.json \
-  derivatives/mriqc/sub-*/ses-*/*/*.json
+  derivatives/mriqc
 
 # Create temporary sub-directory for unzipped DICOMs
 dicom_dir=".tmp/dicom_dir"

@@ -7,13 +7,40 @@ from datalad.api import Dataset
 from simple_slurm import Slurm
 
 
-def create_sub_ds(parent_ds, sub_ds_name):
+def create_sub_ds(parent_ds, sub_ds_name, cfg_proc=None):
+    """Creates a sub-dataset (e.g., for derivatives) in a parent dataset.
+
+    Parameters
+    ----------
+    parent_ds : datalad.api.Dataset
+        The parent dataset.
+    sub_ds_name : str
+        The name desired for the new sub-dataset.
+    cfg_proc : str
+        The DataLad configuration procedure, handling which files will be
+        stored with git versus git-annex. The default (`None`) works well for
+        BIDS dataset because it will make all files go to the annex. Note that
+        the README and CHANGES files will always be stored with git. Also see
+        https://handbook.datalad.org/en/latest/basics/101-124-procedures.html
+
+    Returns
+    -------
+    sub_ds : datalad.api.Dataset
+        The newly created sub-dataset.
+    """
 
     # Create sub-dataset if it doesn't exist
     sub_ds_dir = Path(parent_ds.path) / sub_ds_name
     sub_ds = Dataset(sub_ds_dir)
     if not sub_ds.is_installed():
-        parent_ds.create(sub_ds_name, cfg_proc='text2git')
+        parent_ds.create(sub_ds_name, cfg_proc=cfg_proc)
+
+    # Make sure README and CHANGELOG get stored with git
+    sub_ds.repo.set_gitattributes(
+        [('README*', {'annex.largefiles': 'nothing'}),
+         ('CHANGES*', {'annex.largefiles': 'nothing'})])
+    parent_ds.save(sub_ds_name + '/.gitattributes',
+                   message='Exclude README/CHANGES from git-annex')
 
     return sub_ds
 
