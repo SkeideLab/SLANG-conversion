@@ -48,6 +48,21 @@ log_dir = bids_dir / code_dir_name / 'logs'
 participants_sessions = download_datashare(
     run_params['datashare_dir'], bids_ds)
 
+# Find successfully converted BIDS sessions
+participant_session_dirs = list(bids_dir.glob('sub-*/ses-*/'))
+participants_sessions_existing = [
+    (d.parent.name.replace('sub-', ''), d.name.replace('ses-', ''))
+    for d in participant_session_dirs]
+
+# Get all sessions where downloaded data is available
+# this will be files downloaded in this or earlier executions
+available_files = list(bids_dir.glob(f"sourcedata/*/*[0-9].zip"))
+available_sessions = [(str(s).split('/')[-1].split('_')
+                       [0], str(s).split('/')[-2]) for s in available_files]
+# Remove existing bids sessions from to-do list
+participants_sessions = list(
+    sorted(set(available_sessions).difference(participants_sessions_existing)))
+
 # # Select a subset of participants/sessions for debugging
 # participants_sessions = [('SA27', '01'), ('SA27', '02')]
 

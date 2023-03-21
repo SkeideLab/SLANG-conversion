@@ -294,6 +294,7 @@ class Unpacker:
                     f'no log file for session {session}, subject {subject}, task {task}.')
                 print('Skipping this run...')
                 l_file = ['no file found']
+                return
         else:
             try:
                 if not run in self.lookup_logs[str(int(session))][subject][task]:
@@ -532,6 +533,8 @@ class Unpacker:
             delim = ','
 
         onsets = pd.read_csv(log_filename, sep=delim)
+        # nan for num means that there are nearly empty rows bec of early termination
+        onsets = onsets[~np.isnan(onsets['num'])]
 
         # process columns
 

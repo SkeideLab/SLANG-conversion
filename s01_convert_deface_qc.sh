@@ -86,6 +86,7 @@ datalad save --message "Delete short scans" sub-"$participant"/ses-"$session"/
 # Note that this will not affect datasets without MP2RAGE scans
 sub_ses_anat_dir="sub-$participant/ses-$session/anat"
 datalad run \
+  --assume-ready inputs \
   --input "$sub_ses_anat_dir" \
   --output "$sub_ses_anat_dir" \
   --message "Convert any MP2RAGE scans to MPRAGE" \
