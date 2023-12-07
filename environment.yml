@@ -60,6 +60,8 @@ dependencies:
   - msgpack-python=1.0.2
   - mutagen=1.45.1
   - ncurses=6.3
+  - nibabel <=5.1.0
+  - nilearn <=0.10.1
   - olefile=0.46
   - openssl=1.1.1l
   - p7zip=16.02
