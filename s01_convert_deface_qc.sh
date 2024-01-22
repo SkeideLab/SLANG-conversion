@@ -96,8 +96,9 @@ python code/mp2rage_to_mprage.py \
 -sub $participant \
 -ses $session" 
 
-# Remove all other sessions before defacing
+# Remove all other sessions before defacing and create directory if it doesn't exist yet
 # This is necessary because bidsonym has no --session_label flag
+mkdir -p "$sub_ses_dir"
 tmp_ses_dir=".tmp_ses_dir"
 mv "$sub_ses_dir" "$tmp_ses_dir"
 rm -rf sub-"$participant"/ses-*/
