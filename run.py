@@ -1,67 +1,70 @@
+# %%
+# Load modules
 import json
 from pathlib import Path
 from sys import executable
 
 from datalad.api import Dataset
 
-from helpers import create_sub_ds, download_datashare, submit_job
+from scripts.helpers import create_sub_ds, download_datashare, submit_job
 
-# Read study-specific inputs from `run_params.json`
-with open(f'{Path(__file__).parent.resolve()}/run_params.json', 'r') as fp:
-    run_params = json.load(fp)
+# %%
+# Get file paths and parameters
+code_dir = Path(__file__).parent.resolve()
+log_dir = code_dir / 'logs'
 
-# Get Datalad dataset
-bids_dir = Path(__file__).parent.parent.resolve()
+bids_dir = code_dir.parent
 bids_ds = Dataset(bids_dir)
 
-# Create sub-dataset for derivatives (i.e., QC reports)
-deriv_ds = create_sub_ds(bids_ds, 'derivatives')
+deriv_ds = create_sub_ds(bids_ds, sub_ds_name='derivatives')
 
+with open(code_dir / 'run_params.json', 'r') as params_file:
+    run_params = json.load(params_file)
+
+# %%
 # Create outputstore to store intermediate results from batch jobs
 ria_dir = bids_dir / '.outputstore'
 if not ria_dir.exists():
     ria_url = f'ria+file://{ria_dir}'
-    bids_ds.create_sibling_ria(
-        ria_url, name='output', alias='bids', new_store_ok=True)
-    deriv_ds.create_sibling_ria(
-        ria_url, name='output', alias='derivatives', new_store_ok=True)
+    bids_ds.create_sibling_ria(ria_url, name='output', alias='bids',
+                               new_store_ok=True)
+    deriv_ds.create_sibling_ria(ria_url, name='output', alias='derivatives',
+                                new_store_ok=True)
     bids_ds.push(to='output')
     deriv_ds.push(to='output')
 
-# Get paths of the datasat siblings in the outputstore
+# Get paths of the dataset siblings in the outputstore
 bids_remote = bids_ds.siblings(name='output')[0]['url']
 deriv_remote = deriv_ds.siblings(name='output')[0]['url']
 
+# %%
 # Make sure that containers are available for the batch jobs
-code_dir_name = Path(__file__).parent.name
-containers_path = code_dir_name + '/containers/images/'
+containers_prefix = f'{code_dir.name}/containers/images'
 containers_dict = {
-    'heudiconv': containers_path + 'repronim/repronim-reproin--0.11.3.sing',
-    'bidsonym': containers_path + 'bids/bids-bidsonym--0.0.4.sing',
-    'mriqc': containers_path + 'bids/bids-mriqc--0.16.1.sing'}
+    'heudiconv': f'{containers_prefix}/nipy/Singularity.nipy-heudiconv--1.1.6',
+    'bidsonym': f'{containers_prefix}/bids/Singularity.bids-bidsonym--0.0.4',
+    'mriqc': f'{containers_prefix}/bids/Singularity.bids-mriqc--24.0.0'}
 bids_ds.get(containers_dict.values())
 
-# Define directory for log files of SLURM jobs
-log_dir = bids_dir / code_dir_name / 'logs'
-
+# %%
 # Download new raw data from DataShare
-participants_sessions = download_datashare(
-    run_params['datashare_dir'], bids_ds)
+datashare_dir = run_params['datashare_dir']
+participants_sessions = download_datashare(datashare_dir, bids_ds)
 
-# Find successfully converted BIDS sessions
-participant_session_dirs = list(bids_dir.glob('sub-*/ses-*/'))
-participants_sessions_existing = [
-    (d.parent.name.replace('sub-', ''), d.name.replace('ses-', ''))
-    for d in participant_session_dirs]
+# # Find successfully converted BIDS sessions
+# participant_session_dirs = list(bids_dir.glob('sub-*/ses-*/'))
+# participants_sessions_existing = [
+#     (d.parent.name.replace('sub-', ''), d.name.replace('ses-', ''))
+#     for d in participant_session_dirs]
 
-# Get all sessions where downloaded data is available
-# this will be files downloaded in this or earlier executions
-available_files = list(bids_dir.glob(f"sourcedata/*/*[0-9].zip"))
-available_sessions = [(str(s).split('/')[-1].split('_')
-                       [0], str(s).split('/')[-2]) for s in available_files]
-# Remove existing bids sessions from to-do list
-participants_sessions = list(
-    sorted(set(available_sessions).difference(participants_sessions_existing)))
+# # Get all sessions where downloaded data is available
+# # this will be files downloaded in this or earlier executions
+# available_files = list(bids_dir.glob(f"sourcedata/*/*[0-9].zip"))
+# available_sessions = [(str(s).split('/')[-1].split('_')
+#                        [0], str(s).split('/')[-2]) for s in available_files]
+# # Remove existing bids sessions from to-do list
+# participants_sessions = list(
+#     sorted(set(available_sessions).difference(participants_sessions_existing)))
 
 # # Select a subset of participants/sessions for debugging
 # participants_sessions = [('SA27', '01'), ('SA27', '02')]
