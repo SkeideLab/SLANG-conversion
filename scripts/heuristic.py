@@ -13,7 +13,8 @@ def get_params():
         'latest_run_only', 'task_name','t1w_pattern'.
     """
 
-    params_file = Path(__file__).parent.joinpath('run_params.json').resolve()
+    code_dir = Path(__file__).resolve().parents[1]
+    params_file = code_dir / 'run_params.json'
     with open(params_file, 'r') as f:
         run_params = json.load(f)
 
