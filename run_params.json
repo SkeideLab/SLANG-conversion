@@ -8,7 +8,6 @@
       "series_description": "Ax fMRI  2.4 mm"
     }
   },
-  "fmap_heuristic": {},
   "latest_run_only": true,
   "fd_thres": 2.4,
   "fd_perc": 10,
