@@ -20,7 +20,7 @@ cd "$bids_dir"
 # Participant level quality control
 mriqc_dir="derivatives/mriqc"
 datalad containers-run \
-  --container-name "code/containers/bids-mriqc" \
+  --container-name "bids-mriqc" \
   --input . \
   --output "$mriqc_dir" \
   --message "Create group level quality reports" \

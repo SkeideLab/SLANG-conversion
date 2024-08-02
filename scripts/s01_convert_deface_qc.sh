@@ -64,7 +64,7 @@ rm -rf $dicom_dir/"
 heuristic_file="code/scripts/heuristic.py"
 sub_ses_dir="sub-$participant/ses-$session/"
 datalad containers-run \
-  --container-name "code/containers/repronim-reproin" \
+  --container-name "nipy-heudiconv" \
   --input "$tar_file" \
   --input "$heuristic_file" \
   --output "$sub_ses_dir" \
@@ -94,7 +94,7 @@ mv "$tmp_ses_dir" "$sub_ses_dir"
 
 # Defacing
 datalad containers-run \
-  --container-name "code/containers/bids-bidsonym" \
+  --container-name "bids-bidsonym" \
   --input "$sub_ses_dir" \
   --output "$sub_ses_dir" \
   --message "Deface anatomical image" \
@@ -118,7 +118,7 @@ flock --verbose "$lockfile" git push outputstore
 # Participant level quality control
 mriqc_dir="derivatives/mriqc/"
 datalad containers-run \
-  --container-name "code/containers/bids-mriqc" \
+  --container-name "bids-mriqc" \
   --input "$sub_ses_dir" \
   --output "$mriqc_dir" \
   --message "Create participant level quality reports" \
