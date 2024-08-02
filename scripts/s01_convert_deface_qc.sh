@@ -84,24 +84,6 @@ datalad containers-run \
 git rm -rf "$tar_file"
 datalad save --message "Cleanup temporary files" "$tar_file"
 
-# Delete short runs so they don't get processed with mriqc
-rm -f sub-"$participant"/ses-"$session"/func/*_acq-*short*
-datalad save --message "Delete short scans" sub-"$participant"/ses-"$session"/
-
-# Convert any MP2RAGE scans to MPRAGE
-# Note that this will not affect datasets without MP2RAGE scans
-sub_ses_anat_dir="sub-$participant/ses-$session/anat"
-datalad run \
-  --assume-ready inputs \
-  --input "$sub_ses_anat_dir" \
-  --output "$sub_ses_anat_dir" \
-  --message "Convert any MP2RAGE scans to MPRAGE" \
-  --explicit "\
-python code/mp2rage_to_mprage.py \
---bids_dir $job_dir \
--sub $participant \
--ses $session" 
-
 # Remove all other sessions before defacing and create directory if it doesn't exist yet
 # This is necessary because bidsonym has no --session_label flag
 mkdir -p "$sub_ses_dir"
