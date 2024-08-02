@@ -12,14 +12,16 @@ from scripts.helpers import create_sub_ds, download_datashare, submit_job
 # Get file paths and parameters
 code_dir = Path(__file__).parent.resolve()
 log_dir = code_dir / 'logs'
+script_dir = code_dir / 'scripts'
 
 bids_dir = code_dir.parent
 bids_ds = Dataset(bids_dir)
 
 deriv_ds = create_sub_ds(bids_ds, sub_ds_name='derivatives')
 
-with open(code_dir / 'run_params.json', 'r') as params_file:
-    run_params = json.load(params_file)
+params_file = code_dir / 'run_params.json'
+with open(params_file, 'r') as f:
+    run_params = json.load(f)
 
 # %%
 # Create outputstore to store intermediate results from batch jobs
@@ -51,6 +53,7 @@ bids_ds.get(containers_dict.values())
 datashare_dir = run_params['datashare_dir']
 participants_sessions = download_datashare(datashare_dir, bids_ds)
 
+# %%
 # # Find successfully converted BIDS sessions
 # participant_session_dirs = list(bids_dir.glob('sub-*/ses-*/'))
 # participants_sessions_existing = [
@@ -69,9 +72,10 @@ participants_sessions = download_datashare(datashare_dir, bids_ds)
 # # Select a subset of participants/sessions for debugging
 # participants_sessions = [('SA27', '01'), ('SA27', '02')]
 
+# %%
 # DICOM to BIDS conversion, defacing, and participant level quality control
 # This happens in parallel for all participant/session pairs
-script = f'{bids_dir}/code/s01_convert_deface_qc.sh'
+script = script_dir / 's01_convert_deface_qc.sh'
 fd_thres = run_params['fd_thres']
 job_ids = []
 for participant, session in participants_sessions:
@@ -83,32 +87,35 @@ for participant, session in participants_sessions:
         log_dir=log_dir)
     job_ids.append(job_id)
 
+# %%
 # Merge branches back into the dataset once they've finished
-script = f'{bids_dir}/code/s02_merge.sh'
+script = script_dir / 's02_merge.sh'
 args = [script, bids_dir, *job_ids]
 job_id = submit_job(args, dependency_jobs=job_ids, dependency_type='afterany',
                     job_name='s02_merge', log_dir=log_dir)
 
+# %%
 # Group level quality control
-script = f'{bids_dir}/code/s03_qc_group.sh'
+script = script_dir / 's03_qc_group.sh'
 fd_thres = run_params['fd_thres']
 args = [script, bids_dir, fd_thres]
 job_id = submit_job(args, dependency_jobs=job_id, dependency_type='afterok',
                     job_name='s03_qc_group', log_dir=log_dir)
 
+# %%
 # Discard high-movement scans
-script = f'{bids_dir}/code/s04_exclude.py'
+script = script_dir / 's04_exclude.py'
 fd_perc = run_params['fd_perc']
 move_zip = run_params['move_zip'] if 'move_zip' in run_params else True
-args = [executable, script, '-d', bids_dir, '-p', fd_perc, '-z', move_zip]
+args = [executable, script, '-d', bids_dir, '-p', fd_perc]
 job_id = submit_job(args, dependency_jobs=job_id, dependency_type='afterok',
                     job_name='s04_exclude', log_dir=log_dir)
 
+# %%
 # Copy `events.tsv` files created by PsychoPy into the BIDS structure
 if run_params['events_file_pattern'] is not None:
-    script = f'{bids_dir}/code/s05_copy_events.py'
-    events_file_pattern = "'" + run_params['events_file_pattern'] + "'"
+    script = script_dir / 's05_copy_events.py'
+    events_file_pattern = f'\'{run_params["events_file_pattern"]}\''
     args = [executable, script, '-d', bids_dir, '-p', events_file_pattern]
-    job_id = submit_job(
-        args, dependency_jobs=job_id, dependency_type='afterok',
-        job_name='s05_copy_events', log_dir=log_dir)
+    job_id = submit_job(args, dependency_jobs=[], dependency_type='afterok',
+                        job_name='s05_copy_events', log_dir=log_dir)
