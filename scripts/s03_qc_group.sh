@@ -8,7 +8,7 @@ bids_dir=$1
 fd_thres=$2
 
 # Enable use of Singularity containers
-module load singularity
+module load apptainer
 
 # Go into the BIDS dataset
 cd "$bids_dir"

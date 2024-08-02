@@ -12,7 +12,7 @@ session=$5
 fd_thres=$6
 
 # Enable use of Singularity containers
-module load singularity
+module load apptainer
 
 # Create temporary location
 tmp_dir="/ptmp/$USER/tmp"
