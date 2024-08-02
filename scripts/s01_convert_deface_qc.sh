@@ -57,17 +57,19 @@ tar -cf $tar_file $dicom_dir/* && \
 rm -rf $dicom_dir/"
 
 # Convert DICOMs to BIDS
+heuristic_file="code/scripts/heuristic.py"
 sub_ses_dir="sub-$participant/ses-$session/"
 datalad containers-run \
   --container-name "code/containers/repronim-reproin" \
   --input "$tar_file" \
+  --input "$heuristic_file" \
   --output "$sub_ses_dir" \
   --message "Convert DICOMs to BIDS" \
   --explicit "\
 --files {inputs} \
 --subjects $participant \
 --outdir $job_dir \
---heuristic code/heuristic.py \
+--heuristic $heuristic_file \
 --ses $session \
 --bids \
 --overwrite \
