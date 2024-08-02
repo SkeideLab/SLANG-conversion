@@ -129,11 +129,8 @@ datalad push --dataset . --to output-storage
 git remote add outputstore "$bids_remote"
 flock --verbose "$lockfile" git push outputstore
 
-# Create output directory for quality control
-mriqc_dir="derivatives/mriqc/"
-mkdir -p "$mriqc_dir"
-
 # Participant level quality control
+mriqc_dir="derivatives/mriqc/"
 datalad containers-run \
   --container-name "code/containers/bids-mriqc" \
   --input "$sub_ses_dir" \
