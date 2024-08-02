@@ -41,9 +41,9 @@ deriv_remote = deriv_ds.siblings(name='output')[0]['url']
 # Make sure that containers are available for the batch jobs
 containers_prefix = f'{code_dir.name}/containers/images'
 containers_dict = {
-    'heudiconv': f'{containers_prefix}/nipy/Singularity.nipy-heudiconv--1.1.6',
-    'bidsonym': f'{containers_prefix}/bids/Singularity.bids-bidsonym--0.0.4',
-    'mriqc': f'{containers_prefix}/bids/Singularity.bids-mriqc--24.0.0'}
+    'heudiconv': f'{containers_prefix}/nipy/nipy-heudiconv--1.1.6.sing',
+    'bidsonym': f'{containers_prefix}/bids/bids-bidsonym--0.0.4.sing',
+    'mriqc': f'{containers_prefix}/bids/bids-mriqc--0.16.1.sing'}
 bids_ds.get(containers_dict.values())
 
 # %%
