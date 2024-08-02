@@ -12,7 +12,7 @@ session=$5
 fd_thres=$6
 
 # Enable use of Singularity containers
-module load singularity
+module load apptainer
 
 # Create temporary location
 tmp_dir="/ptmp/$USER/tmp"
@@ -57,17 +57,19 @@ tar -cf $tar_file $dicom_dir/* && \
 rm -rf $dicom_dir/"
 
 # Convert DICOMs to BIDS
+heuristic_file="code/scripts/heuristic.py"
 sub_ses_dir="sub-$participant/ses-$session/"
 datalad containers-run \
   --container-name "code/containers/repronim-reproin" \
   --input "$tar_file" \
+  --input "$heuristic_file" \
   --output "$sub_ses_dir" \
   --message "Convert DICOMs to BIDS" \
   --explicit "\
 --files {inputs} \
 --subjects $participant \
 --outdir $job_dir \
---heuristic code/heuristic.py \
+--heuristic $heuristic_file \
 --ses $session \
 --bids \
 --overwrite \
@@ -127,11 +129,8 @@ datalad push --dataset . --to output-storage
 git remote add outputstore "$bids_remote"
 flock --verbose "$lockfile" git push outputstore
 
-# Create output directory for quality control
-mriqc_dir="derivatives/mriqc/"
-mkdir -p "$mriqc_dir"
-
 # Participant level quality control
+mriqc_dir="derivatives/mriqc/"
 datalad containers-run \
   --container-name "code/containers/bids-mriqc" \
   --input "$sub_ses_dir" \
