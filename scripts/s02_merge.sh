@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # Fail whenever something is fishy; use -x to get verbose logfiles
 set -e -u -x
@@ -7,6 +7,10 @@ set -e -u -x
 bids_dir=$1
 shift
 merge_job_ids=("$@")
+
+# Activate conda environment
+module load anaconda/3/2023.03
+conda activate slang
 
 # Go into the Dataset directory
 cd "$bids_dir"

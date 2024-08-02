@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # Fail whenever something is fishy; use -x to get verbose logfiles
 set -e -u -x
@@ -13,6 +13,10 @@ fd_thres=$6
 
 # Enable use of Singularity containers
 module load apptainer
+
+# Activate conda environment
+module load anaconda/3/2023.03
+conda activate slang
 
 # Create temporary location
 tmp_dir="/ptmp/$USER/tmp"

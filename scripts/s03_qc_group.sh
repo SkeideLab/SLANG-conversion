@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # Fail whenever something is fishy; use -x to get verbose logfiles
 set -e -u -x
@@ -9,6 +9,10 @@ fd_thres=$2
 
 # Enable use of Singularity containers
 module load apptainer
+
+# Activate conda environment
+module load anaconda/3/2023.03
+conda activate slang
 
 # Go into the BIDS dataset
 cd "$bids_dir"
