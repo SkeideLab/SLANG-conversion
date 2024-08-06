@@ -10,7 +10,7 @@ merge_job_ids=("$@")
 
 # Activate conda environment
 module load anaconda/3/2023.03
-conda activate slang
+conda activate SLANG
 
 # Go into the Dataset directory
 cd "$bids_dir"

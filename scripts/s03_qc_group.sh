@@ -12,7 +12,7 @@ module load apptainer
 
 # Activate conda environment
 module load anaconda/3/2023.03
-conda activate slang
+conda activate SLANG
 
 # Go into the BIDS dataset
 cd "$bids_dir"
