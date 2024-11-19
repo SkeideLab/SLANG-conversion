@@ -1,4 +1,7 @@
-# bids_template_code
-Scripts for converting (longitudinal) fMRI data into BIDS format
+# SLANG-conversion
 
-This is part of a preprocessing pipeline including [SkeideLab/bids_template](https://github.com/SkeideLab/bids_template) for bids conversion and [SkeideLab/derivatives_template_code](https://github.com/SkeideLab/derivatives_template_code) for preprocessing. Please go to [SkeideLab/bids_template](https://github.com/SkeideLab/bids_template) to start the pipeline and see processing details.
+Code for the DICOM to BIDS conversion, defacing, and quality control for the SLANG project
+
+**Internal note:**
+This is part of the preprocessing pipeline including [SkeideLab/bids_template](https://github.com/SkeideLab/bids_template) for BIDS conversion and [SkeideLab/derivatives_template_code](https://github.com/SkeideLab/derivatives_template_code) for preprocessing. 
+For new projects, please go to [SkeideLab/bids_template](https://github.com/SkeideLab/bids_template) to start the pipeline and see the processing details.
